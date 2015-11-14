@@ -1,0 +1,9 @@
+Filesystem     Use% Mounted on
+/dev/md2        42% /
+none             0% /sys/fs/cgroup
+udev             1% /dev
+tmpfs            1% /run
+none             0% /run/lock
+none             1% /run/shm
+none             0% /run/user
+/dev/md1        15% /boot

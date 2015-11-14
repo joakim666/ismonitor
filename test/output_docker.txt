@@ -1,0 +1,9 @@
+/confluence
+/cassandra
+/logspout-logstash
+/elk
+/postgres
+/rabbitmq
+/jenkins
+/nginx
+/nginx-gen

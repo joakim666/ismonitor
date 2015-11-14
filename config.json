@@ -1,0 +1,17 @@
+{
+  "docker_containers": [
+    "confluence",
+    "cassandra",
+    "postgres",
+    "rabbitmq",
+    "jenkins",
+    "nginx",
+    "nginx-gen"
+  ],
+  "disk_usage_percent_warning": 80,
+  "uptime_load_5_minutes_warning": 5.0
+}
+
+
+
+
