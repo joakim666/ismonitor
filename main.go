@@ -6,16 +6,24 @@ import (
 	"os/exec"
 	"io/ioutil"
 	"encoding/json"
-	"strings"
-	"sort"
-	"strconv"
+	"text/template"
+	"bytes"
+	"time"
 )
 
 type Config struct {
-	DockerContainers 			[]string	`json:"docker_containers"`
-	DiskUsagePercentWarning 	int 		`json:"disk_usage_percent_warning"`
-	UptimeLoad5MinutesWarning	float64		`json:"uptime_load_5_minutes_warning"`
+	DockerContainers 			[]string			`json:"docker_containers"`
+	DiskUsagePercentWarning 	int 				`json:"disk_usage_percent_warning"`
+	UptimeLoad5MinutesWarning	float64				`json:"uptime_load_5_minutes_warning"`
+	ElkConfiguration			[]ElkConfiguration	`json:"elk"`
 }
+
+type ElkConfiguration struct {
+	Query			string	`json:"query"`
+	MatchesEqual 	*int		`json:"matchesEquals"`
+	MatchesAtLeast	*int		`json:"matchesAtLeast"`
+}
+
 
 func main() {
 	configFile, err := ioutil.ReadFile("config.json")
@@ -59,119 +67,98 @@ func main() {
 	errors = append(errors, uptimeErrors...)
 
 
-	for _, e := range errors {
-		fmt.Print(e)
-	}
-}
+	elkErrors := doElkVerifications(config)
+	errors = append(errors, elkErrors...)
 
-func test_main() {
-	configFile, err := ioutil.ReadFile("test/config.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	var config Config
-	err = json.Unmarshal(configFile, &config)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// 1. Verify running docker containers
-	// sudo docker inspect --format='{{.Name}}' $(sudo docker ps -q --no-trunc)
-	o, err := ioutil.ReadFile("test/output_docker.txt")
-	if err != nil {
-		log.Fatal(err)
-	}
-	var errors []string
-	runningDockerErrors := verifyRunningDockerContainers(string(o), config.DockerContainers)
-	errors = append(errors, runningDockerErrors...)
-
-	// 2. Verify free space
-	// df --output='source,pcent,target'
-	o2, err := ioutil.ReadFile("test/output_df.txt")
-	if err != nil {
-		log.Fatal(err)
-	}
-	freeSpaceErrors := verifyFreeSpace(string(o2), config.DiskUsagePercentWarning)
-	errors = append(errors, freeSpaceErrors...)
-
-	// 3. Verify uptime load
-	// uptime
-	o3, err := ioutil.ReadFile("test/output_uptime.txt")
-	if err != nil {
-		log.Fatal(err)
-	}
-	uptimeErrors := verifyUptimeLoad(string(o3), config.UptimeLoad5MinutesWarning)
-	errors = append(errors, uptimeErrors...)
 
 	for _, e := range errors {
 		fmt.Print(e)
 	}
 }
 
-func verifyRunningDockerContainers(output string, expectedContainers []string) []string {
+func doElkVerifications(config Config) []string {
 	var errors []string
 
-	lines := strings.Split(output, "\n")
-
-	// remove first char of container name from docker inspect output which is '/'
-	for i, _ := range lines {
-		if len(lines[i]) > 0 {
-			lines[i] = lines[i][1:]
-		}
-	}
-
-	sort.Strings(lines)
-
-	for _, name := range expectedContainers {
-		i := sort.Search(len(lines),
-			func(i int) bool { return lines[i] >= name })
-		if (i >= len(lines) || (i < len(lines) && lines[i] != name)) {
-			errors = append(errors, fmt.Sprintf("Docker container '%s' is not running\n", name))
-		}
+	for _, c := range(config.ElkConfiguration) {
+		errors = append(errors, doElkVerification(c)...)
 	}
 
 	return errors
 }
 
-func verifyFreeSpace(output string, diskUsagePercentWarning int) []string {
-	var errors []string
-
-	lines := strings.Split(output, "\n")
-
-	for _, line := range lines[1:] { // skip header row
-		columns := strings.Fields(line)
-
-		if (len(columns) > 1) {
-			//fmt.Println(columns)
-			percentValue, err := strconv.Atoi(strings.Trim(columns[1], "%"))
-			if err != nil {
-				errors = append(errors, fmt.Sprint(err))
-			} else {
-				if (percentValue >= diskUsagePercentWarning) {
-					errors = append(errors, fmt.Sprintf("Disk usage at %d percent\n", percentValue))
-				}
-			}
-		}
-	}
-
-	return errors
+type ElkTemplateData struct {
+	Date	string
+	Query	string
 }
 
-func verifyUptimeLoad(output string, uptimeLoad5MinutesWarning float64) []string {
+func doElkVerification(config ElkConfiguration) []string {
+	const elkTemplate = `curl -XPOST localhost:9200/logstash-{{.Date}}/logs/_search -d '{
+  "query": {
+    "filtered": {
+      "query": {
+        "query_string": {
+          "query": "{{.Query}}"
+        }
+      },
+      "filter": {
+        "bool": {
+          "must": [
+            {
+              "range": {
+                "@timestamp": {
+                  "gte": "now-5m"
+                }
+              }
+            }
+          ],
+          "must_not": []
+        }
+      }
+    }
+  },
+  "size": 500,
+  "sort": {
+    "@timestamp": "desc"
+  },
+  "fields": [
+    "_source"
+  ],
+  "script_fields": {},
+  "fielddata_fields": [
+    "timestamp",
+    "@timestamp"
+  ]
+}'
+`
 	var errors []string
 
-	columns := strings.Fields(output)
+	tmpl, err := template.New("elk").Parse(elkTemplate)
+	if err != nil {
+		errors = append(errors, fmt.Sprintf("Failed to parse elk template: %s\n", fmt.Sprint(err)))
+		return errors
+	}
 
-	if (len(columns) >= 11) {
-		floatValue, err := strconv.ParseFloat(strings.Trim(columns[11], ","), 64)
-		if err != nil {
-			errors = append(errors, fmt.Sprint(err))
-		} else {
-			if (floatValue >= uptimeLoad5MinutesWarning) {
-				errors = append(errors, fmt.Sprintf("High load warning: %s\n", output))
-			}
-		}
+	templateData := ElkTemplateData{formatDateForElkIndex(time.Now()), template.JSEscapeString(config.Query)}
+
+	var b bytes.Buffer
+	err = tmpl.Execute(&b, templateData)
+	if err != nil {
+		errors = append(errors, fmt.Sprintf("Failed to parse elk template: %s\n", fmt.Sprint(err)))
+		return errors
+	}
+
+	cmd := fmt.Sprintf("docker exec elk %s", b.String())
+	o, err := exec.Command("bash", "-c", cmd).Output()
+	if err != nil {
+		errors = append(errors, fmt.Sprintf("Failed to run docker command: %s\n", fmt.Sprint(err)))
+	}
+
+	if config.MatchesEqual != nil {
+		e := verifyElkExpectedNoOfMatches(string(o), *config.MatchesEqual)
+		errors = append(errors, e...)
+	} else {
+		e:= verifyElkAtLeastNoOfMatches(string(o), *config.MatchesAtLeast)
+		errors = append(errors, e...)
 	}
 
 	return errors

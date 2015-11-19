@@ -9,7 +9,18 @@
     "nginx-gen"
   ],
   "disk_usage_percent_warning": 80,
-  "uptime_load_5_minutes_warning": 5.0
+  "uptime_load_5_minutes_warning": 5.0,
+
+  "elk": [
+    {
+      "query": "message:\"ERROR\"",
+      "matchesEquals": 0
+    },
+    {
+      "query": "message:\"Upload\"",
+      "matchesAtLeast": 5
+    }
+  ]
 }
 
 

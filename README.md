@@ -1,7 +1,6 @@
 # pjek-monitor
 
-A simple cronbased docker container, disk usage and load monitoring application that alerts through 
-cron (i.e. mail to root)
+A simple cron-based monitoring tool.
 
 ## Verifications
 
@@ -17,6 +16,13 @@ Alerts if disk usages goes over a configured threshold.
 
 Alerts if the 5 minutes load average is over a configured threshold.
 
+### Assertions against logstash queries
+
+E.g. verify no matches for the string 'ERROR' in all log files the last 5 minutes or that the string 'successful' 
+appeared at least 3 times.
+
+(Currently hardcoded for the ELK-stack running in a docker container and doing the queries through docker exec)
+
 
 ## Build instructions
 
@@ -28,7 +34,7 @@ Alerts if the 5 minutes load average is over a configured threshold.
 The application assumes the **config.json** file is in the current directory when the application is started. I.e.
 run it like:
 
-<code>$ cd foo && ./pjek-monitor</code>
+<code>$ cd pjek-monitor && ./pjek-monitor</code>
 
 I run it from cron with the following cron line:
 
@@ -37,7 +43,8 @@ I run it from cron with the following cron line:
 ## TODO
 
 * Allow running in daemon mode
-* Add verification that queries Elasticsearch/logstash for number of log lines with given pattern in time period
+* Make the verifications, especially the logstash queries, a bit more generic and less tied to my specific setup
+* Mail support both through local MTA or direct through remote SMTP server
 
 ## License
 
