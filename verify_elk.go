@@ -59,7 +59,7 @@ func verifyElkAtLeastNoOfMatches(output string, atleast int) []string {
 	}
 
 	if elkResult.Results.Total < atleast {
-		errors = append(errors, fmt.Sprintf("Expected at least %d matches but was only %d\n", atleast, elkResult.Results.Total))
+		errors = append(errors, fmt.Sprintf("Expected at least %d matches but was %d\n", atleast, elkResult.Results.Total))
 		if elkResult.Results.Total > 0 {
 			errors = append(errors, fmt.Sprintf("One of the matching lines: %s %s %s\n", elkResult.Results.Hits[0].Source.Timestamp,
 				elkResult.Results.Hits[0].Source.DockerName, elkResult.Results.Hits[0].Source.Message))
