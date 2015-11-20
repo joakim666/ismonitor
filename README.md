@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/joakim666/pjek-monitor.svg)](https://travis-ci.org/joakim666/pjek-monitor)
+
 # pjek-monitor
 
 A simple cron-based monitoring tool.
