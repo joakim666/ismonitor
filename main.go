@@ -138,7 +138,7 @@ func doElkVerification(config ElkConfiguration) []string {
 		return errors
 	}
 
-	templateData := ElkTemplateData{formatDateForElkIndex(time.Now()), template.JSEscapeString(config.Query)}
+	templateData := ElkTemplateData{formatDateForElkIndex(time.Now().UTC()), template.JSEscapeString(config.Query)}
 
 	var b bytes.Buffer
 	err = tmpl.Execute(&b, templateData)
