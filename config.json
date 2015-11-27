@@ -14,11 +14,13 @@
   "elk": [
     {
       "query": "message:\"ERROR\"",
-      "matchesEquals": 0
+      "matchesEquals": 0,
+      "minutes": 5
     },
     {
       "query": "message:\"Upload\"",
-      "matchesAtLeast": 5
+      "matchesAtLeast": 5,
+      "minutes": 5
     }
   ]
 }

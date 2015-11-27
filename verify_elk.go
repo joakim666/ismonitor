@@ -24,21 +24,30 @@ type ElkHitSource struct {
 	Timestamp	string			`json:"@timestamp"`
 }
 
-func verifyElkExpectedNoOfMatches(output string, expectedMatches int) []string {
+func verifyElkExpectedNoOfMatches(outputs []string, expectedMatches int) []string {
 	var errors []string
 
-	var elkResult ElkResult
-	err := json.Unmarshal([]byte(output), &elkResult)
-	if err != nil {
-		errors = append(errors, fmt.Sprintf("Failed to parse json output file: %s\n", fmt.Sprint(err)))
-		return errors
+	var matches []ElkHit
+	var total = 0
+
+	// parse the json outputs. Collect the matches and sum the total number of matches
+	for _, o := range outputs {
+		var res ElkResult
+		err := json.Unmarshal([]byte(o), &res)
+		if err != nil {
+			errors = append(errors, fmt.Sprintf("Failed to parse json output file: %s\n", fmt.Sprint(err)))
+			return errors
+		}
+		matches = append(matches, res.Results.Hits...)
+		total += res.Results.Total
 	}
 
-	if elkResult.Results.Total != expectedMatches {
-		if elkResult.Results.Total == 0 {
+	if total != expectedMatches {
+		if total == 0 {
 			errors = append(errors, fmt.Sprintf("Expected %d matches but was 0\n", expectedMatches))
 		} else {
-			for _, hit := range elkResult.Results.Hits {
+			for _, hit := range matches {
+				//errors = append(errors, fmt.Sprintf("Expected %d matches but was %d:\n", expectedMatches, total))
 				errors = append(errors, fmt.Sprintf("%s %s %s\n", hit.Source.Timestamp, hit.Source.DockerName, hit.Source.Message))
 			}
 		}
@@ -47,22 +56,29 @@ func verifyElkExpectedNoOfMatches(output string, expectedMatches int) []string {
 	return errors
 }
 
-func verifyElkAtLeastNoOfMatches(output string, atleast int) []string {
+func verifyElkAtLeastNoOfMatches(outputs []string, atleast int) []string {
 	var errors []string
 
-	var elkResult ElkResult
+	var matches []ElkHit
+	var total = 0
 
-	err := json.Unmarshal([]byte(output), &elkResult)
-	if err != nil {
-		errors = append(errors, fmt.Sprintf("Failed to parse json output file: %s\n", fmt.Sprint(err)))
-		return errors
+	// parse the json outputs. Collect the matches and sum the total number of matches
+	for _, o := range outputs {
+		var res ElkResult
+		err := json.Unmarshal([]byte(o), &res)
+		if err != nil {
+			errors = append(errors, fmt.Sprintf("Failed to parse json output file: %s\n", fmt.Sprint(err)))
+			return errors
+		}
+		matches = append(matches, res.Results.Hits...)
+		total += res.Results.Total
 	}
 
-	if elkResult.Results.Total < atleast {
-		errors = append(errors, fmt.Sprintf("Expected at least %d matches but was %d\n", atleast, elkResult.Results.Total))
-		if elkResult.Results.Total > 0 {
-			errors = append(errors, fmt.Sprintf("One of the matching lines: %s %s %s\n", elkResult.Results.Hits[0].Source.Timestamp,
-				elkResult.Results.Hits[0].Source.DockerName, elkResult.Results.Hits[0].Source.Message))
+	if total < atleast {
+		errors = append(errors, fmt.Sprintf("Expected at least %d matches but was %d\n", atleast, total))
+		if total > 0 {
+			errors = append(errors, fmt.Sprintf("One of the matching lines: %s %s %s\n", matches[0].Source.Timestamp,
+				matches[0].Source.DockerName, matches[0].Source.Message))
 		}
 	}
 
@@ -71,4 +87,11 @@ func verifyElkAtLeastNoOfMatches(output string, atleast int) []string {
 
 func formatDateForElkIndex(time time.Time) string {
 	return time.Format("2006.01.02")
+}
+
+func elkIndexToUse(time time.Time, minutes int) string {
+
+//	time.
+
+	return formatDateForElkIndex(time)
 }

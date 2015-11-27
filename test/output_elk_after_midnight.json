@@ -1,0 +1,13 @@
+{
+  "took":16,
+  "timed_out":false,
+  "_shards":
+  {"total":2,"successful":2,"failed":0},
+  "hits":
+  {
+    "total":2,
+    "max_score":null,
+    "hits":
+    [
+      {"_index":"logstash-2015.11.17","_type":"logs","_id":"AVEP7azVQPe072qRJZfK","_score":null,"_source":{"message":"2015-11-17 11:53:32 ERROR foo error","docker.name":"/foo","docker.id":"a7f1867bc30a0f3aefa0c7ea20dcc07f016ac024e7e38e52f52700730c929f68","docker.image":"example/foo","docker.hostname":"foo","@version":"1","@timestamp":"2015-11-16T10:53:32.922Z","host":"172.17.0.10"},"fields":{"@timestamp":[1447671212922]},"sort":[1447671212922]},
+      {"_index":"logstash-2015.11.17","_type":"logs","_id":"AVEP7azVQPe072qRJZfJ","_score":null,"_source":{"message":"2015-11-17 11:53:32 ERROR foo error","docker.name":"/foo","docker.id":"a7f1867bc30a0f3aefa0c7ea20dcc07f016ac024e7e38e52f52700730c929f68","docker.image":"example/foo","docker.hostname":"foo","@version":"1","@timestamp":"2015-11-16T10:53:32.872Z","host":"172.17.0.10"},"fields":{"@timestamp":[1447671212872]},"sort":[1447671212872]}]}}

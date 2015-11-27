@@ -6,9 +6,6 @@ import (
 	"os/exec"
 	"io/ioutil"
 	"encoding/json"
-	"text/template"
-	"bytes"
-	"time"
 )
 
 type Config struct {
@@ -20,8 +17,9 @@ type Config struct {
 
 type ElkConfiguration struct {
 	Query			string	`json:"query"`
-	MatchesEqual 	*int		`json:"matchesEquals"`
-	MatchesAtLeast	*int		`json:"matchesAtLeast"`
+	MatchesEqual 	*int	`json:"matchesEquals"`
+	MatchesAtLeast	*int	`json:"matchesAtLeast"`
+	Minutes			int		`json:"minutes"`
 }
 
 
@@ -74,92 +72,4 @@ func main() {
 	for _, e := range errors {
 		fmt.Print(e)
 	}
-}
-
-func doElkVerifications(config Config) []string {
-	var errors []string
-
-	for _, c := range(config.ElkConfiguration) {
-		errors = append(errors, doElkVerification(c)...)
-	}
-
-	return errors
-}
-
-type ElkTemplateData struct {
-	Date	string
-	Query	string
-}
-
-func doElkVerification(config ElkConfiguration) []string {
-	const elkTemplate = `curl -XPOST localhost:9200/logstash-{{.Date}}/logs/_search -d '{
-  "query": {
-    "filtered": {
-      "query": {
-        "query_string": {
-          "query": "{{.Query}}"
-        }
-      },
-      "filter": {
-        "bool": {
-          "must": [
-            {
-              "range": {
-                "@timestamp": {
-                  "gte": "now-5m"
-                }
-              }
-            }
-          ],
-          "must_not": []
-        }
-      }
-    }
-  },
-  "size": 500,
-  "sort": {
-    "@timestamp": "desc"
-  },
-  "fields": [
-    "_source"
-  ],
-  "script_fields": {},
-  "fielddata_fields": [
-    "timestamp",
-    "@timestamp"
-  ]
-}'
-`
-	var errors []string
-
-	tmpl, err := template.New("elk").Parse(elkTemplate)
-	if err != nil {
-		errors = append(errors, fmt.Sprintf("Failed to parse elk template: %s\n", fmt.Sprint(err)))
-		return errors
-	}
-
-	templateData := ElkTemplateData{formatDateForElkIndex(time.Now().UTC()), template.JSEscapeString(config.Query)}
-
-	var b bytes.Buffer
-	err = tmpl.Execute(&b, templateData)
-	if err != nil {
-		errors = append(errors, fmt.Sprintf("Failed to parse elk template: %s\n", fmt.Sprint(err)))
-		return errors
-	}
-
-	cmd := fmt.Sprintf("docker exec elk %s", b.String())
-	o, err := exec.Command("bash", "-c", cmd).Output()
-	if err != nil {
-		errors = append(errors, fmt.Sprintf("Failed to run docker command: %s\n", fmt.Sprint(err)))
-	}
-
-	if config.MatchesEqual != nil {
-		e := verifyElkExpectedNoOfMatches(string(o), *config.MatchesEqual)
-		errors = append(errors, e...)
-	} else {
-		e:= verifyElkAtLeastNoOfMatches(string(o), *config.MatchesAtLeast)
-		errors = append(errors, e...)
-	}
-
-	return errors
 }
