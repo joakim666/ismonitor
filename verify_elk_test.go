@@ -133,9 +133,14 @@ func TestElkIndexToUse(t *testing.T) {
 
 	time1, err := time.Parse("2006-01-02 15:04:05", "2010-10-10 11:11:12")
 	assert.Nil(err, fmt.Sprint(err))
-	assert.Equal("2010.10.10", elkIndexToUse(time1, 5))
+	indexes := elkIndexToUse(time1, 5)
+	assert.Equal(1, len(indexes))
+	assert.Equal("2010.10.10", indexes[0])
 
 	time2, err := time.Parse("2006-01-02 15:04:05", "2010-10-10 00:01:12")
 	assert.Nil(err, fmt.Sprint(err))
-	assert.Equal("2010.10.09", elkIndexToUse(time2, 5))
+	indexes = elkIndexToUse(time2, 5)
+	assert.Equal(2, len(indexes))
+	assert.Equal("2010.10.09", indexes[0])
+	assert.Equal("2010.10.10", indexes[1])
 }
