@@ -93,7 +93,8 @@ func doElkVerification(config ElkConfiguration) []string {
 		cmd := fmt.Sprintf("docker exec elk %s", b.String())
 		o, err := exec.Command("bash", "-c", cmd).Output()
 		if err != nil {
-			errors = append(errors, fmt.Sprintf("Failed to run docker command: %s\n", fmt.Sprint(err)))
+			errors = append(errors, fmt.Sprintf("Failed to run docker command: %s\n\nReturn code: %s\n", cmd, fmt.Sprint(err)))
+			return errors
 		}
 
 		outputs = append(outputs, string(o))
