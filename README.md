@@ -1,6 +1,6 @@
-[![Build Status](https://travis-ci.org/joakim666/pjek-monitor.svg)](https://travis-ci.org/joakim666/pjek-monitor)
+[![Build Status](https://travis-ci.org/joakim666/ismonitor.svg)](https://travis-ci.org/joakim666/ismonitor)
 
-# pjek-monitor
+# ismonitor
 
 A simple cron-based monitoring tool.
 
@@ -28,7 +28,7 @@ appeared at least 3 times.
 
 ## Build instructions
 
-<code>$ docker run --rm -v "$PWD":/usr/src/pjek-monitor -w /usr/src/pjek-monitor golang:1.5.1 go build -v</code>
+<code>$ docker run --rm -v "$PWD":/usr/src/ismonitor -w /usr/src/ismonitor golang:1.5.1 go build -v</code>
 
 
 ## Running
@@ -36,11 +36,11 @@ appeared at least 3 times.
 The application assumes the **config.json** file is in the current directory when the application is started. I.e.
 run it like:
 
-<code>$ cd pjek-monitor && ./pjek-monitor</code>
+<code>$ cd ismonitor && ./ismonitor</code>
 
 I run it from cron with the following cron line:
 
-<code>*/5 *  *   *   *     cd /root/pjek-monitor && ./pjek-monitor</code>
+<code>*/5 *  *   *   *     cd /root/ismonitor && ./ismonitor</code>
 
 ## TODO
 
