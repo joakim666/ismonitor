@@ -1,8 +1,9 @@
 package main
+
 import (
-"fmt"
-"strings"
+	"fmt"
 	"strconv"
+	"strings"
 )
 
 func verifyFreeSpace(output string, diskUsagePercentWarning int) []string {
@@ -13,13 +14,13 @@ func verifyFreeSpace(output string, diskUsagePercentWarning int) []string {
 	for _, line := range lines[1:] { // skip header row
 		columns := strings.Fields(line)
 
-		if (len(columns) > 1) {
+		if len(columns) > 1 {
 			//fmt.Println(columns)
 			percentValue, err := strconv.Atoi(strings.Trim(columns[1], "%"))
 			if err != nil {
 				errors = append(errors, fmt.Sprint(err))
 			} else {
-				if (percentValue >= diskUsagePercentWarning) {
+				if percentValue >= diskUsagePercentWarning {
 					errors = append(errors, fmt.Sprintf("Disk usage at %d percent\n", percentValue))
 				}
 			}
@@ -34,12 +35,12 @@ func verifyUptimeLoad(output string, uptimeLoad5MinutesWarning float64) []string
 
 	columns := strings.Fields(output)
 
-	if (len(columns) >= 11) {
+	if len(columns) >= 11 {
 		floatValue, err := strconv.ParseFloat(strings.Trim(columns[11], ","), 64)
 		if err != nil {
 			errors = append(errors, fmt.Sprint(err))
 		} else {
-			if (floatValue >= uptimeLoad5MinutesWarning) {
+			if floatValue >= uptimeLoad5MinutesWarning {
 				errors = append(errors, fmt.Sprintf("High load warning: %s\n", output))
 			}
 		}

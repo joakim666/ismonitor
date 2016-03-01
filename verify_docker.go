@@ -1,8 +1,9 @@
 package main
+
 import (
 	"fmt"
 	"sort"
-"strings"
+	"strings"
 )
 
 func verifyRunningDockerContainers(output string, expectedContainers []string) []string {
@@ -22,7 +23,7 @@ func verifyRunningDockerContainers(output string, expectedContainers []string) [
 	for _, name := range expectedContainers {
 		i := sort.Search(len(lines),
 			func(i int) bool { return lines[i] >= name })
-		if (i >= len(lines) || (i < len(lines) && lines[i] != name)) {
+		if i >= len(lines) || (i < len(lines) && lines[i] != name) {
 			errors = append(errors, fmt.Sprintf("Docker container '%s' is not running\n", name))
 		}
 	}

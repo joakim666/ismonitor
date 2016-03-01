@@ -1,17 +1,18 @@
 package main
+
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"time"
 	"os/exec"
-	"bytes"
-"text/template"
+	"text/template"
+	"time"
 )
 
 func doElkVerifications(config Config) []string {
 	var errors []string
 
-	for _, c := range(config.ElkConfiguration) {
+	for _, c := range config.ElkConfiguration {
 		errors = append(errors, doElkVerification(c)...)
 	}
 
@@ -19,9 +20,9 @@ func doElkVerifications(config Config) []string {
 }
 
 type ElkTemplateData struct {
-	Date		string
-	Query		string
-	Minutes		string
+	Date    string
+	Query   string
+	Minutes string
 }
 
 func doElkVerification(config ElkConfiguration) []string {
@@ -102,31 +103,30 @@ func doElkVerification(config ElkConfiguration) []string {
 		e := verifyElkExpectedNoOfMatches(outputs, *config.MatchesEqual)
 		errors = append(errors, e...)
 	} else {
-		e:= verifyElkAtLeastNoOfMatches(outputs, *config.MatchesAtLeast)
+		e := verifyElkAtLeastNoOfMatches(outputs, *config.MatchesAtLeast)
 		errors = append(errors, e...)
 	}
 
 	return errors
 }
 
-
 type ElkResult struct {
-	Results		ElkHits	`json:"hits"`
+	Results ElkHits `json:"hits"`
 }
 
 type ElkHits struct {
-	Total		int			`json:"total"`
-	Hits		[]ElkHit	`json:"hits"`
+	Total int      `json:"total"`
+	Hits  []ElkHit `json:"hits"`
 }
 
 type ElkHit struct {
-	Source		ElkHitSource	`json:"_source"`
+	Source ElkHitSource `json:"_source"`
 }
 
 type ElkHitSource struct {
-	Message		string			`json:"message"`
-	DockerName	string			`json:"docker.name"`
-	Timestamp	string			`json:"@timestamp"`
+	Message    string `json:"message"`
+	DockerName string `json:"docker.name"`
+	Timestamp  string `json:"@timestamp"`
 }
 
 func verifyElkExpectedNoOfMatches(outputs []string, expectedMatches int) []string {
@@ -198,7 +198,7 @@ func formatDateForElkIndex(time time.Time) string {
 // logstash query. If the query spans midnight UTC, when logstash does daily index rotation, this function
 // will return both the pre-midnight index and the post-midnight index
 func elkIndexToUse(now time.Time, minutes int) []string {
-	then := now.Add(time.Duration(-1 * minutes) * time.Minute)
+	then := now.Add(time.Duration(-1*minutes) * time.Minute)
 
 	if now.Day() != then.Day() {
 		return []string{formatDateForElkIndex(then), formatDateForElkIndex(now)}

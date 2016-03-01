@@ -1,27 +1,26 @@
 package main
 
 import (
-    "fmt"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"log"
 	"os/exec"
-	"io/ioutil"
-	"encoding/json"
 )
 
 type Config struct {
-	DockerContainers 			[]string			`json:"docker_containers"`
-	DiskUsagePercentWarning 	int 				`json:"disk_usage_percent_warning"`
-	UptimeLoad5MinutesWarning	float64				`json:"uptime_load_5_minutes_warning"`
-	ElkConfiguration			[]ElkConfiguration	`json:"elk"`
+	DockerContainers          []string           `json:"docker_containers"`
+	DiskUsagePercentWarning   int                `json:"disk_usage_percent_warning"`
+	UptimeLoad5MinutesWarning float64            `json:"uptime_load_5_minutes_warning"`
+	ElkConfiguration          []ElkConfiguration `json:"elk"`
 }
 
 type ElkConfiguration struct {
-	Query			string	`json:"query"`
-	MatchesEqual 	*int	`json:"matchesEquals"`
-	MatchesAtLeast	*int	`json:"matchesAtLeast"`
-	Minutes			int		`json:"minutes"`
+	Query          string `json:"query"`
+	MatchesEqual   *int   `json:"matchesEquals"`
+	MatchesAtLeast *int   `json:"matchesAtLeast"`
+	Minutes        int    `json:"minutes"`
 }
-
 
 func main() {
 	configFile, err := ioutil.ReadFile("config.json")
@@ -64,10 +63,8 @@ func main() {
 	uptimeErrors := verifyUptimeLoad(string(o3), config.UptimeLoad5MinutesWarning)
 	errors = append(errors, uptimeErrors...)
 
-
 	elkErrors := doElkVerifications(config)
 	errors = append(errors, elkErrors...)
-
 
 	for _, e := range errors {
 		fmt.Print(e)

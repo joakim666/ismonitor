@@ -1,10 +1,10 @@
 package main
 
 import (
-	"testing"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
-	"fmt"
+	"testing"
 )
 
 func TestVerifyFreeSpace(t *testing.T) {
@@ -38,4 +38,3 @@ func TestVerifyUptimeLoad(t *testing.T) {
 	errors = verifyUptimeLoad(string(output), 0.1)
 	assert.Equal(1, len(errors), "The load is over 0")
 }
-
