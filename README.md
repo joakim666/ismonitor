@@ -23,8 +23,6 @@ Alerts if the 5 minutes load average is over a configured threshold.
 E.g. verify no matches for the string 'ERROR' in all log files the last 5 minutes or that the string 'successful' 
 appeared at least 3 times.
 
-(Currently hardcoded for the ELK-stack running in a docker container and doing the queries through docker exec)
-
 
 ## Build instructions
 

@@ -16,6 +16,8 @@ type Config struct {
 }
 
 type ElkConfiguration struct {
+	Host           string `json:"host"`
+	Port           string `json:"port"`
 	Query          string `json:"query"`
 	MatchesEqual   *int   `json:"matchesEquals"`
 	MatchesAtLeast *int   `json:"matchesAtLeast"`

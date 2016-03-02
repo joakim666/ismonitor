@@ -3,8 +3,11 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"os/exec"
+	"io/ioutil"
+	"net/http"
+	"strings"
 	"text/template"
 	"time"
 )
@@ -19,85 +22,51 @@ func doElkVerifications(config Config) []string {
 	return errors
 }
 
-type ElkTemplateData struct {
-	Date    string
+type ElkUrlTemplateData struct {
+	Host string
+	Port string
+	Date string
+}
+
+type ElkBodyTemplateData struct {
 	Query   string
 	Minutes string
 }
 
 func doElkVerification(config ElkConfiguration) []string {
-	const elkTemplate = `curl -XPOST localhost:9200/logstash-{{.Date}}/logs/_search -d '{
-  "query": {
-    "filtered": {
-      "query": {
-        "query_string": {
-          "query": "{{.Query}}"
-        }
-      },
-      "filter": {
-        "bool": {
-          "must": [
-            {
-              "range": {
-                "@timestamp": {
-                  "gte": "now-{{.Minutes}}m"
-                }
-              }
-            }
-          ],
-          "must_not": []
-        }
-      }
-    }
-  },
-  "size": 500,
-  "sort": {
-    "@timestamp": "desc"
-  },
-  "fields": [
-    "_source"
-  ],
-  "script_fields": {},
-  "fielddata_fields": [
-    "timestamp",
-    "@timestamp"
-  ]
-}'
-`
 	var errors []string
-
-	tmpl, err := template.New("elk").Parse(elkTemplate)
-	if err != nil {
-		errors = append(errors, fmt.Sprintf("Failed to parse elk template: %s\n", fmt.Sprint(err)))
-		return errors
-	}
-
-	indexes := elkIndexToUse(time.Now().UTC(), config.Minutes)
 
 	// if multiple indexes that will result in multiple calls to logstash
 	// i.e. the results might be a combination of a query against the pre-midnight index and the
 	// post-midnight index (as logstash does index rotation at midnight utc)
+	indexes := elkIndexToUse(time.Now().UTC(), config.Minutes)
+	var urls, err = makeUrls(config.Host, config.Port, indexes)
+	if err != nil {
+		errors = append(errors, fmt.Sprintf("Failed to make urls: %s\n", fmt.Sprint(err)))
+		return errors
+	}
 
 	var outputs []string
-	for _, index := range indexes {
-		templateData := ElkTemplateData{index,
-			template.JSEscapeString(config.Query), fmt.Sprintf("%d", config.Minutes)}
-
-		var b bytes.Buffer
-		err = tmpl.Execute(&b, templateData)
+	for _, url := range urls {
+		body, err := makeBody(config.Query, config.Minutes)
 		if err != nil {
-			errors = append(errors, fmt.Sprintf("Failed to parse elk template: %s\n", fmt.Sprint(err)))
+			errors = append(errors, fmt.Sprintf("Failed to make elk request body: %s\n", fmt.Sprint(err)))
 			return errors
 		}
 
-		cmd := fmt.Sprintf("docker exec elk %s", b.String())
-		o, err := exec.Command("bash", "-c", cmd).Output()
+		resp, err := http.Post(url, "application/json", strings.NewReader(body))
 		if err != nil {
-			errors = append(errors, fmt.Sprintf("Failed to run docker command: %s\n\nReturn code: %s\n", cmd, fmt.Sprint(err)))
+			errors = append(errors, fmt.Sprintf("Failed to make elk request: %s\n", fmt.Sprint(err)))
+			return errors
+		}
+		defer resp.Body.Close()
+		res, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			errors = append(errors, fmt.Sprintf("Failed to read response from elk: %s\n", fmt.Sprint(err)))
 			return errors
 		}
 
-		outputs = append(outputs, string(o))
+		outputs = append(outputs, string(res))
 	}
 
 	if config.MatchesEqual != nil {
@@ -206,5 +175,83 @@ func elkIndexToUse(now time.Time, minutes int) []string {
 	} else {
 		return []string{formatDateForElkIndex(now)}
 	}
+}
 
+func makeUrls(host string, port string, indexes []string) ([]string, error) {
+	const elkUrlTemplate = "http://{{.Host}}:{{.Port}}/logstash-{{.Date}}/logs/_search"
+
+	tmpl, err := template.New("url").Parse(elkUrlTemplate)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("Failed to parse elk template: %s\n", fmt.Sprint(err)))
+	}
+
+	var urls []string
+	for _, index := range indexes {
+		templateData := ElkUrlTemplateData{host, port, index}
+
+		var b bytes.Buffer
+		err = tmpl.Execute(&b, templateData)
+		if err != nil {
+			return nil, errors.New(fmt.Sprintf("Failed to parse elk template: %s\n", fmt.Sprint(err)))
+		}
+
+		urls = append(urls, b.String())
+	}
+
+	return urls, nil
+}
+
+func makeBody(query string, minutes int) (string, error) {
+	const elkBodyTemplate = `{
+  "query": {
+    "filtered": {
+      "query": {
+        "query_string": {
+          "query": "{{.Query}}"
+        }
+      },
+      "filter": {
+        "bool": {
+          "must": [
+            {
+              "range": {
+                "@timestamp": {
+                  "gte": "now-{{.Minutes}}m"
+                }
+              }
+            }
+          ],
+          "must_not": []
+        }
+      }
+    }
+  },
+  "size": 500,
+  "sort": {
+    "@timestamp": "desc"
+  },
+  "fields": [
+    "_source"
+  ],
+  "script_fields": {},
+  "fielddata_fields": [
+    "timestamp",
+    "@timestamp"
+  ]
+}'
+`
+	tmpl, err := template.New("body").Parse(elkBodyTemplate)
+	if err != nil {
+		return "", errors.New(fmt.Sprintf("Failed to parse elk template: %s\n", fmt.Sprint(err)))
+	}
+
+	templateData := ElkBodyTemplateData{template.JSEscapeString(query), fmt.Sprintf("%d", minutes)}
+
+	var b bytes.Buffer
+	err = tmpl.Execute(&b, templateData)
+	if err != nil {
+		return "", errors.New(fmt.Sprintf("Failed to parse elk template: %s\n", fmt.Sprint(err)))
+	}
+
+	return b.String(), nil
 }

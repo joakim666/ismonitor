@@ -144,3 +144,76 @@ func TestElkIndexToUse(t *testing.T) {
 	assert.Equal("2010.10.09", indexes[0])
 	assert.Equal("2010.10.10", indexes[1])
 }
+
+func TestMakeUrl(t *testing.T) {
+	assert := assert.New(t)
+
+	var indexes []string
+
+	urls, err := makeUrls("host", "port", indexes)
+	assert.Nil(err, fmt.Sprint(err))
+	assert.Equal(0, len(urls))
+
+	indexes = append(indexes, "index1")
+
+	urls, err = makeUrls("host", "port", indexes)
+	assert.Nil(err, fmt.Sprint(err))
+	assert.Equal(1, len(urls))
+	assert.Equal("http://host:port/logstash-index1/logs/_search", urls[0])
+
+	indexes = append(indexes, "index2")
+
+	urls, err = makeUrls("host", "port", indexes)
+	assert.Nil(err, fmt.Sprint(err))
+	assert.Equal(2, len(urls))
+	assert.Equal("http://host:port/logstash-index1/logs/_search", urls[0])
+	assert.Equal("http://host:port/logstash-index2/logs/_search", urls[1])
+}
+
+func TestMakeBody(t *testing.T) {
+	assert := assert.New(t)
+
+	body, err := makeBody("query", 60)
+	assert.Nil(err, fmt.Sprint(err))
+
+	const res = `{
+  "query": {
+    "filtered": {
+      "query": {
+        "query_string": {
+          "query": "query"
+        }
+      },
+      "filter": {
+        "bool": {
+          "must": [
+            {
+              "range": {
+                "@timestamp": {
+                  "gte": "now-60m"
+                }
+              }
+            }
+          ],
+          "must_not": []
+        }
+      }
+    }
+  },
+  "size": 500,
+  "sort": {
+    "@timestamp": "desc"
+  },
+  "fields": [
+    "_source"
+  ],
+  "script_fields": {},
+  "fielddata_fields": [
+    "timestamp",
+    "@timestamp"
+  ]
+}'
+`
+
+	assert.Equal(res, body)
+}
