@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestVerifyFreeSpace(t *testing.T) {
@@ -23,18 +24,18 @@ func TestVerifyFreeSpace(t *testing.T) {
 	assert.Equal(2, len(errors), "Should be two mounts with more than 40% usage")
 }
 
-func TestVerifyUptimeLoad(t *testing.T) {
+func TestVerifyLoadAvg(t *testing.T) {
 	assert := assert.New(t)
 
-	output, err := ioutil.ReadFile("test/output_uptime.txt")
+	output, err := ioutil.ReadFile("test/output_proc_loadavg.txt")
 	assert.Nil(err, fmt.Sprint(err))
 
-	errors := verifyUptimeLoad(string(output), 5)
+	errors := verifyLoadAvg(string(output), 5)
 	assert.Equal(0, len(errors), "The load isn't over 5")
 
-	errors = verifyUptimeLoad(string(output), 0)
+	errors = verifyLoadAvg(string(output), 0)
 	assert.Equal(1, len(errors), "The load is over 0")
 
-	errors = verifyUptimeLoad(string(output), 0.1)
+	errors = verifyLoadAvg(string(output), 0.1)
 	assert.Equal(1, len(errors), "The load is over 0")
 }

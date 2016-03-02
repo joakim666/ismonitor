@@ -15,7 +15,6 @@ func verifyFreeSpace(output string, diskUsagePercentWarning int) []string {
 		columns := strings.Fields(line)
 
 		if len(columns) > 1 {
-			//fmt.Println(columns)
 			percentValue, err := strconv.Atoi(strings.Trim(columns[1], "%"))
 			if err != nil {
 				errors = append(errors, fmt.Sprint(err))
@@ -30,13 +29,13 @@ func verifyFreeSpace(output string, diskUsagePercentWarning int) []string {
 	return errors
 }
 
-func verifyUptimeLoad(output string, uptimeLoad5MinutesWarning float64) []string {
+func verifyLoadAvg(output string, uptimeLoad5MinutesWarning float64) []string {
 	var errors []string
 
 	columns := strings.Fields(output)
 
-	if len(columns) >= 11 {
-		floatValue, err := strconv.ParseFloat(strings.Trim(columns[11], ","), 64)
+	if len(columns) >= 3 {
+		floatValue, err := strconv.ParseFloat(columns[1], 64)
 		if err != nil {
 			errors = append(errors, fmt.Sprint(err))
 		} else {

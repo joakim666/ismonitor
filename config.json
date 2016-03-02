@@ -1,4 +1,16 @@
-{
+{  
+  "cron_schedule": "0 */5 * * * *",
+  "smtp": {
+     "host": "mailprovider",
+     "port": 587,
+     "auth": {
+       "username": "username",
+       "password": "password"
+     },
+     "from": "ismonitor@example.com",
+     "to": ["monitoring@example.com"]
+  },
+
   "docker_containers": [
     "confluence",
     "cassandra",
@@ -8,6 +20,7 @@
     "nginx",
     "nginx-gen"
   ],
+
   "disk_usage_percent_warning": 80,
   "uptime_load_5_minutes_warning": 5.0,
 
