@@ -44,14 +44,14 @@ func TestSendEmail(t *testing.T) {
 		From: "from",
 		To:   []string{"to1", "to2"}}
 
-	errorStrings := []string{"Error1"}
+	errors := []verificationError{verificationError{title: "Title", message: "Error1"}}
 
 	const rfc2822 = "Mon, 02 Jan 2006 15:04:05 -0700"
 	tt := "Sun, 28 Feb 2016 18:54:05 +0100"
 	parsedTime, err := time.Parse(rfc2822, tt)
 	assert.Nil(err, fmt.Sprint(err))
 
-	err = sendEmail(m.MockSender, cfg, parsedTime, errorStrings)
+	err = sendEmail(m.MockSender, cfg, parsedTime, errors)
 	assert.Nil(err, fmt.Sprint(err))
 
 	assert.Equal("host:6666", m.addr)
@@ -85,5 +85,5 @@ func TestSendEmail(t *testing.T) {
 	// written and thus won't be valid UTF-8.
 	// You have to use only the real written length returned by the Decode function.
 	// Hence the [:len] below
-	assert.Equal("Error1\n", string(decodedStr[:len]))
+	assert.Equal("Title\n   Error1\n", string(decodedStr[:len]))
 }

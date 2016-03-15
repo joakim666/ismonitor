@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -12,8 +11,29 @@ import (
 	"time"
 )
 
-func doElkVerifications(config Config) []string {
-	var errors []string
+type elkConfiguration struct {
+	Host                string `json:"host"`
+	Port                string `json:"port"`
+	Query               string `json:"query"`
+	MatchesEqual        *int   `json:"matchesEquals"`
+	MatchesAtLeast      *int   `json:"matchesAtLeast"`
+	Minutes             int    `json:"minutes"`
+	NotificationMessage string `json:"notification_message"`
+}
+
+type elkURLTemplateData struct {
+	Host string
+	Port string
+	Date string
+}
+
+type elkBodyTemplateData struct {
+	Query   string
+	Minutes string
+}
+
+func doElkVerifications(config config) []verificationError {
+	var errors []verificationError
 
 	for _, c := range config.ElkConfiguration {
 		errors = append(errors, doElkVerification(c)...)
@@ -22,19 +42,8 @@ func doElkVerifications(config Config) []string {
 	return errors
 }
 
-type ElkUrlTemplateData struct {
-	Host string
-	Port string
-	Date string
-}
-
-type ElkBodyTemplateData struct {
-	Query   string
-	Minutes string
-}
-
-func doElkVerification(config ElkConfiguration) []string {
-	var errors []string
+func doElkVerification(config elkConfiguration) []verificationError {
+	var errors []verificationError
 
 	// if multiple indexes that will result in multiple calls to logstash
 	// i.e. the results might be a combination of a query against the pre-midnight index and the
@@ -42,7 +51,8 @@ func doElkVerification(config ElkConfiguration) []string {
 	indexes := elkIndexToUse(time.Now().UTC(), config.Minutes)
 	var urls, err = makeUrls(config.Host, config.Port, indexes)
 	if err != nil {
-		errors = append(errors, fmt.Sprintf("Failed to make urls: %s\n", fmt.Sprint(err)))
+		e := verificationError{title: "Elk verification error", message: fmt.Sprintf("Failed to make urls: %s\n", fmt.Sprint(err))}
+		errors = append(errors, e)
 		return errors
 	}
 
@@ -50,19 +60,22 @@ func doElkVerification(config ElkConfiguration) []string {
 	for _, url := range urls {
 		body, err := makeBody(config.Query, config.Minutes)
 		if err != nil {
-			errors = append(errors, fmt.Sprintf("Failed to make elk request body: %s\n", fmt.Sprint(err)))
+			e := verificationError{title: "Elk verification error", message: fmt.Sprintf("Failed to make elk request body: %s\n", fmt.Sprint(err))}
+			errors = append(errors, e)
 			return errors
 		}
 
 		resp, err := http.Post(url, "application/json", strings.NewReader(body))
 		if err != nil {
-			errors = append(errors, fmt.Sprintf("Failed to make elk request: %s\n", fmt.Sprint(err)))
+			e := verificationError{title: "Elk verification error", message: fmt.Sprintf("Failed to make elk request: %s\n", fmt.Sprint(err))}
+			errors = append(errors, e)
 			return errors
 		}
 		defer resp.Body.Close()
 		res, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			errors = append(errors, fmt.Sprintf("Failed to read response from elk: %s\n", fmt.Sprint(err)))
+			e := verificationError{title: "Elk verification error", message: fmt.Sprintf("Failed to read response from elk: %s\n", fmt.Sprint(err))}
+			errors = append(errors, e)
 			return errors
 		}
 
@@ -70,10 +83,10 @@ func doElkVerification(config ElkConfiguration) []string {
 	}
 
 	if config.MatchesEqual != nil {
-		e := verifyElkExpectedNoOfMatches(outputs, *config.MatchesEqual)
+		e := verifyElkExpectedNoOfMatches(outputs, *config.MatchesEqual, config.NotificationMessage)
 		errors = append(errors, e...)
 	} else {
-		e := verifyElkAtLeastNoOfMatches(outputs, *config.MatchesAtLeast)
+		e := verifyElkAtLeastNoOfMatches(outputs, *config.MatchesAtLeast, config.NotificationMessage)
 		errors = append(errors, e...)
 	}
 
@@ -99,8 +112,8 @@ type ElkHitSource struct {
 	Timestamp  string `json:"@timestamp"`
 }
 
-func verifyElkExpectedNoOfMatches(outputs []string, expectedMatches int) []string {
-	var errors []string
+func verifyElkExpectedNoOfMatches(outputs []string, expectedMatches int, notificationMessage string) []verificationError {
+	var errors []verificationError
 
 	var matches []ElkHit
 	var total = 0
@@ -110,8 +123,8 @@ func verifyElkExpectedNoOfMatches(outputs []string, expectedMatches int) []strin
 		var res ElkResult
 		err := json.Unmarshal([]byte(o), &res)
 		if err != nil {
-			errors = append(errors, fmt.Sprintf("Failed to parse json output file: %s\n", fmt.Sprint(err)))
-			return errors
+			e := verificationError{title: "Elk verification error", message: fmt.Sprintf("Failed to parse json output file: %s\n", fmt.Sprint(err))}
+			return append(errors, e)
 		}
 		matches = append(matches, res.Results.Hits...)
 		total += res.Results.Total
@@ -119,11 +132,13 @@ func verifyElkExpectedNoOfMatches(outputs []string, expectedMatches int) []strin
 
 	if total != expectedMatches {
 		if total == 0 {
-			errors = append(errors, fmt.Sprintf("Expected %d matches but was 0\n", expectedMatches))
+			e := verificationError{title: notificationMessage, message: fmt.Sprintf("Expected %d matches but was 0\n", expectedMatches)}
+			errors = append(errors, e)
 		} else {
 			for _, hit := range matches {
 				//errors = append(errors, fmt.Sprintf("Expected %d matches but was %d:\n", expectedMatches, total))
-				errors = append(errors, fmt.Sprintf("%s %s %s\n", hit.Source.Timestamp, hit.Source.DockerName, hit.Source.Message))
+				e := verificationError{title: notificationMessage, message: fmt.Sprintf("%s %s %s\n", hit.Source.Timestamp, hit.Source.DockerName, hit.Source.Message)}
+				errors = append(errors, e)
 			}
 		}
 	}
@@ -131,8 +146,8 @@ func verifyElkExpectedNoOfMatches(outputs []string, expectedMatches int) []strin
 	return errors
 }
 
-func verifyElkAtLeastNoOfMatches(outputs []string, atleast int) []string {
-	var errors []string
+func verifyElkAtLeastNoOfMatches(outputs []string, atleast int, notificationMessage string) []verificationError {
+	var errors []verificationError
 
 	var matches []ElkHit
 	var total = 0
@@ -142,7 +157,8 @@ func verifyElkAtLeastNoOfMatches(outputs []string, atleast int) []string {
 		var res ElkResult
 		err := json.Unmarshal([]byte(o), &res)
 		if err != nil {
-			errors = append(errors, fmt.Sprintf("Failed to parse json output file: %s\n", fmt.Sprint(err)))
+			e := verificationError{title: notificationMessage, message: fmt.Sprintf("Failed to parse json output file: %s\n", fmt.Sprint(err))}
+			errors = append(errors, e)
 			return errors
 		}
 		matches = append(matches, res.Results.Hits...)
@@ -150,10 +166,16 @@ func verifyElkAtLeastNoOfMatches(outputs []string, atleast int) []string {
 	}
 
 	if total < atleast {
-		errors = append(errors, fmt.Sprintf("Expected at least %d matches but was %d\n", atleast, total))
+		e := verificationError{title: notificationMessage, message: fmt.Sprintf("Expected at least %d matches but was %d\n", atleast, total)}
+		errors = append(errors, e)
 		if total > 0 {
-			errors = append(errors, fmt.Sprintf("One of the matching lines: %s %s %s\n", matches[0].Source.Timestamp,
-				matches[0].Source.DockerName, matches[0].Source.Message))
+			e := verificationError{
+				title: "Elk verification error",
+				message: fmt.Sprintf("One of the matching lines: %s %s %s\n",
+					matches[0].Source.Timestamp,
+					matches[0].Source.DockerName,
+					matches[0].Source.Message)}
+			errors = append(errors, e)
 		}
 	}
 
@@ -178,21 +200,21 @@ func elkIndexToUse(now time.Time, minutes int) []string {
 }
 
 func makeUrls(host string, port string, indexes []string) ([]string, error) {
-	const elkUrlTemplate = "http://{{.Host}}:{{.Port}}/logstash-{{.Date}}/logs/_search"
+	const elkURLTemplate = "http://{{.Host}}:{{.Port}}/logstash-{{.Date}}/logs/_search"
 
-	tmpl, err := template.New("url").Parse(elkUrlTemplate)
+	tmpl, err := template.New("url").Parse(elkURLTemplate)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("Failed to parse elk template: %s\n", fmt.Sprint(err)))
+		return nil, fmt.Errorf("Failed to parse elk template: %s\n", fmt.Sprint(err))
 	}
 
 	var urls []string
 	for _, index := range indexes {
-		templateData := ElkUrlTemplateData{host, port, index}
+		templateData := elkURLTemplateData{host, port, index}
 
 		var b bytes.Buffer
 		err = tmpl.Execute(&b, templateData)
 		if err != nil {
-			return nil, errors.New(fmt.Sprintf("Failed to parse elk template: %s\n", fmt.Sprint(err)))
+			return nil, fmt.Errorf("Failed to parse elk template: %s\n", fmt.Sprint(err))
 		}
 
 		urls = append(urls, b.String())
@@ -242,15 +264,15 @@ func makeBody(query string, minutes int) (string, error) {
 `
 	tmpl, err := template.New("body").Parse(elkBodyTemplate)
 	if err != nil {
-		return "", errors.New(fmt.Sprintf("Failed to parse elk template: %s\n", fmt.Sprint(err)))
+		return "", fmt.Errorf("Failed to parse elk template: %s\n", fmt.Sprint(err))
 	}
 
-	templateData := ElkBodyTemplateData{template.JSEscapeString(query), fmt.Sprintf("%d", minutes)}
+	templateData := elkBodyTemplateData{template.JSEscapeString(query), fmt.Sprintf("%d", minutes)}
 
 	var b bytes.Buffer
 	err = tmpl.Execute(&b, templateData)
 	if err != nil {
-		return "", errors.New(fmt.Sprintf("Failed to parse elk template: %s\n", fmt.Sprint(err)))
+		return "", fmt.Errorf("Failed to parse elk template: %s\n", fmt.Sprint(err))
 	}
 
 	return b.String(), nil

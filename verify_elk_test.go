@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestVerifyElkExpectedNoOfMatches(t *testing.T) {
@@ -14,13 +15,13 @@ func TestVerifyElkExpectedNoOfMatches(t *testing.T) {
 	output, err := ioutil.ReadFile("test/output_elk.json")
 	assert.Nil(err, fmt.Sprint(err))
 
-	errors := verifyElkExpectedNoOfMatches([]string{string(output)}, 0)
+	errors := verifyElkExpectedNoOfMatches([]string{string(output)}, 0, "msg")
 	assert.Equal(5, len(errors), fmt.Sprint(errors))
 
-	errors = verifyElkExpectedNoOfMatches([]string{string(output)}, 1)
+	errors = verifyElkExpectedNoOfMatches([]string{string(output)}, 1, "msg")
 	assert.Equal(5, len(errors), fmt.Sprint(errors))
 
-	errors = verifyElkExpectedNoOfMatches([]string{string(output)}, 5)
+	errors = verifyElkExpectedNoOfMatches([]string{string(output)}, 5, "msg")
 	assert.Equal(0, len(errors), fmt.Sprint(errors))
 }
 
@@ -30,13 +31,13 @@ func TestVerifyElkExpectedNoOfMatchesWithNoMatches(t *testing.T) {
 	output, err := ioutil.ReadFile("test/output_elk_no_matches.json")
 	assert.Nil(err, fmt.Sprint(err))
 
-	errors := verifyElkExpectedNoOfMatches([]string{string(output)}, 0)
+	errors := verifyElkExpectedNoOfMatches([]string{string(output)}, 0, "msg")
 	assert.Equal(0, len(errors), fmt.Sprint(errors))
 
-	errors = verifyElkExpectedNoOfMatches([]string{string(output)}, 1)
+	errors = verifyElkExpectedNoOfMatches([]string{string(output)}, 1, "msg")
 	assert.Equal(1, len(errors), fmt.Sprint(errors))
 
-	errors = verifyElkExpectedNoOfMatches([]string{string(output)}, 5)
+	errors = verifyElkExpectedNoOfMatches([]string{string(output)}, 5, "msg")
 	assert.Equal(1, len(errors), fmt.Sprint(errors))
 }
 
@@ -46,19 +47,19 @@ func TestVerifyElkAtLeastNoOfMatches(t *testing.T) {
 	output, err := ioutil.ReadFile("test/output_elk.json")
 	assert.Nil(err, fmt.Sprint(err))
 
-	errors := verifyElkAtLeastNoOfMatches([]string{string(output)}, 0)
+	errors := verifyElkAtLeastNoOfMatches([]string{string(output)}, 0, "msg")
 	assert.Equal(0, len(errors), fmt.Sprint(errors))
 
-	errors = verifyElkAtLeastNoOfMatches([]string{string(output)}, 1)
+	errors = verifyElkAtLeastNoOfMatches([]string{string(output)}, 1, "msg")
 	assert.Equal(0, len(errors), fmt.Sprint(errors))
 
-	errors = verifyElkAtLeastNoOfMatches([]string{string(output)}, 5)
+	errors = verifyElkAtLeastNoOfMatches([]string{string(output)}, 5, "msg")
 	assert.Equal(0, len(errors), fmt.Sprint(errors))
 
-	errors = verifyElkAtLeastNoOfMatches([]string{string(output)}, 6)
+	errors = verifyElkAtLeastNoOfMatches([]string{string(output)}, 6, "msg")
 	assert.Equal(2, len(errors), fmt.Sprint(errors))
 
-	errors = verifyElkAtLeastNoOfMatches([]string{string(output)}, 55)
+	errors = verifyElkAtLeastNoOfMatches([]string{string(output)}, 55, "msg")
 	assert.Equal(2, len(errors), fmt.Sprint(errors))
 }
 
@@ -68,19 +69,19 @@ func TestVerifyElkAtLeastNoOfMatchesWithNoMatches(t *testing.T) {
 	output, err := ioutil.ReadFile("test/output_elk_no_matches.json")
 	assert.Nil(err, fmt.Sprint(err))
 
-	errors := verifyElkAtLeastNoOfMatches([]string{string(output)}, 0)
+	errors := verifyElkAtLeastNoOfMatches([]string{string(output)}, 0, "msg")
 	assert.Equal(0, len(errors), fmt.Sprint(errors))
 
-	errors = verifyElkAtLeastNoOfMatches([]string{string(output)}, 1)
+	errors = verifyElkAtLeastNoOfMatches([]string{string(output)}, 1, "msg")
 	assert.Equal(1, len(errors), fmt.Sprint(errors))
 
-	errors = verifyElkAtLeastNoOfMatches([]string{string(output)}, 5)
+	errors = verifyElkAtLeastNoOfMatches([]string{string(output)}, 5, "msg")
 	assert.Equal(1, len(errors), fmt.Sprint(errors))
 
-	errors = verifyElkAtLeastNoOfMatches([]string{string(output)}, 6)
+	errors = verifyElkAtLeastNoOfMatches([]string{string(output)}, 6, "msg")
 	assert.Equal(1, len(errors), fmt.Sprint(errors))
 
-	errors = verifyElkAtLeastNoOfMatches([]string{string(output)}, 55)
+	errors = verifyElkAtLeastNoOfMatches([]string{string(output)}, 55, "msg")
 	assert.Equal(1, len(errors), fmt.Sprint(errors))
 }
 
@@ -93,28 +94,28 @@ func TestVerifyElkAroundMidnight(t *testing.T) {
 	output2, err := ioutil.ReadFile("test/output_elk_after_midnight.json")
 	assert.Nil(err, fmt.Sprint(err))
 
-	errors := verifyElkExpectedNoOfMatches([]string{string(output1), string(output2)}, 0)
+	errors := verifyElkExpectedNoOfMatches([]string{string(output1), string(output2)}, 0, "msg")
 	assert.Equal(5, len(errors), fmt.Sprint(errors))
 
-	errors = verifyElkExpectedNoOfMatches([]string{string(output1), string(output2)}, 1)
+	errors = verifyElkExpectedNoOfMatches([]string{string(output1), string(output2)}, 1, "msg")
 	assert.Equal(5, len(errors), fmt.Sprint(errors))
 
-	errors = verifyElkExpectedNoOfMatches([]string{string(output1), string(output2)}, 5)
+	errors = verifyElkExpectedNoOfMatches([]string{string(output1), string(output2)}, 5, "msg")
 	assert.Equal(0, len(errors), fmt.Sprint(errors))
 
-	errors = verifyElkAtLeastNoOfMatches([]string{string(output1), string(output2)}, 0)
+	errors = verifyElkAtLeastNoOfMatches([]string{string(output1), string(output2)}, 0, "msg")
 	assert.Equal(0, len(errors), fmt.Sprint(errors))
 
-	errors = verifyElkAtLeastNoOfMatches([]string{string(output1), string(output2)}, 1)
+	errors = verifyElkAtLeastNoOfMatches([]string{string(output1), string(output2)}, 1, "msg")
 	assert.Equal(0, len(errors), fmt.Sprint(errors))
 
-	errors = verifyElkAtLeastNoOfMatches([]string{string(output1), string(output2)}, 5)
+	errors = verifyElkAtLeastNoOfMatches([]string{string(output1), string(output2)}, 5, "msg")
 	assert.Equal(0, len(errors), fmt.Sprint(errors))
 
-	errors = verifyElkAtLeastNoOfMatches([]string{string(output1), string(output2)}, 6)
+	errors = verifyElkAtLeastNoOfMatches([]string{string(output1), string(output2)}, 6, "msg")
 	assert.Equal(2, len(errors), fmt.Sprint(errors))
 
-	errors = verifyElkAtLeastNoOfMatches([]string{string(output1), string(output2)}, 55)
+	errors = verifyElkAtLeastNoOfMatches([]string{string(output1), string(output2)}, 55, "msg")
 	assert.Equal(2, len(errors), fmt.Sprint(errors))
 
 }

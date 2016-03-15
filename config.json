@@ -30,18 +30,16 @@
       "port": "9200",
       "query": "message:\"ERROR\"",
       "matchesEquals": 0,
-      "minutes": 5
+      "minutes": 5,
+      "notification_message": "An error in the logs the last 5 minutes"
     },
     {
       "host": "localhost",
       "port": "9200",
       "query": "message:\"Upload\"",
       "matchesAtLeast": 5,
-      "minutes": 5
+      "minutes": 5,
+      "notification_message": "Not at least 5 uploads the last 5 minutes"
     }
   ]
 }
-
-
-
-

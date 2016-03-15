@@ -13,13 +13,18 @@ import (
 	"github.com/robfig/cron"
 )
 
-type Config struct {
+type verificationError struct {
+	title   string
+	message string
+}
+
+type config struct {
 	CronSchedule              *string            `json:"cron_schedule"`
 	SMTP                      *smtpConfiguration `json:"smtp"`
 	DockerContainers          []string           `json:"docker_containers"`
 	DiskUsagePercentWarning   int                `json:"disk_usage_percent_warning"`
 	UptimeLoad5MinutesWarning float64            `json:"uptime_load_5_minutes_warning"`
-	ElkConfiguration          []ElkConfiguration `json:"elk"`
+	ElkConfiguration          []elkConfiguration `json:"elk"`
 }
 
 type smtpConfiguration struct {
@@ -35,17 +40,8 @@ type smtpAuth struct {
 	Password string `json:"password"`
 }
 
-type ElkConfiguration struct {
-	Host           string `json:"host"`
-	Port           string `json:"port"`
-	Query          string `json:"query"`
-	MatchesEqual   *int   `json:"matchesEquals"`
-	MatchesAtLeast *int   `json:"matchesAtLeast"`
-	Minutes        int    `json:"minutes"`
-}
-
 type monitorJob struct {
-	config *Config
+	config *config
 }
 
 func (t monitorJob) Run() {
@@ -59,7 +55,7 @@ func startIsmonitor(daemonMode bool) {
 		log.Fatalln(err)
 	}
 
-	var config Config
+	var config config
 	err = json.Unmarshal(configFile, &config)
 	if err != nil {
 		log.Fatalln(err)
@@ -85,14 +81,15 @@ func startIsmonitor(daemonMode bool) {
 	}
 }
 
-func runIsmonitor(config Config) {
-	var errors []string
+func runIsmonitor(config config) {
+	var errors []verificationError
 
 	// 1. Verify running docker containers
 	// $ sudo docker inspect --format='{{.Name}}' $(sudo docker ps -q --no-trunc)
 	o, err := exec.Command("bash", "-c", "docker inspect --format='{{.Name}}' $(docker ps -q --no-trunc)").Output()
 	if err != nil {
-		errors = append(errors, fmt.Sprintf("Failed to run docker command: %s\n", fmt.Sprint(err)))
+		e := verificationError{title: "Docker verification error", message: fmt.Sprintf("Failed to run docker command: %s\n", fmt.Sprint(err))}
+		errors = append(errors, e)
 	}
 	runningDockerErrors := verifyRunningDockerContainers(string(o), config.DockerContainers)
 	errors = append(errors, runningDockerErrors...)
@@ -101,7 +98,8 @@ func runIsmonitor(config Config) {
 	// df --output='source,pcent,target'
 	o2, err := exec.Command("bash", "-c", "df --output='source,pcent,target'").Output() // need to run through bash to work on linux for some reason
 	if err != nil {
-		errors = append(errors, fmt.Sprintf("Failed to run df command: %s\n", fmt.Sprint(err)))
+		e := verificationError{title: "Disk usage verification error", message: fmt.Sprintf("Failed to run df command: %s\n", fmt.Sprint(err))}
+		errors = append(errors, e)
 	}
 	freeSpaceErrors := verifyFreeSpace(string(o2), config.DiskUsagePercentWarning)
 	errors = append(errors, freeSpaceErrors...)
@@ -109,7 +107,8 @@ func runIsmonitor(config Config) {
 	// 3. Verify load average
 	o3, err := ioutil.ReadFile("/proc/loadavg")
 	if err != nil {
-		errors = append(errors, fmt.Sprintf("Failed to read /proc/loadavg: %s\n", fmt.Sprint(err)))
+		e := verificationError{title: "Load average verification error", message: fmt.Sprintf("Failed to read /proc/loadavg: %s\n", fmt.Sprint(err))}
+		errors = append(errors, e)
 	}
 	uptimeErrors := verifyLoadAvg(string(o3), config.UptimeLoad5MinutesWarning)
 	errors = append(errors, uptimeErrors...)
@@ -126,15 +125,14 @@ func runIsmonitor(config Config) {
 	}
 }
 
-func report(smtpConfig *smtpConfiguration, errors []string) error {
+func report(smtpConfig *smtpConfiguration, errors []verificationError) error {
 	var err error
 	if smtpConfig == nil {
 		// report to console
 		for _, e := range errors {
-			fmt.Print(e)
+			fmt.Printf("%s\n   %s", e.title, e.message)
 		}
 	} else {
-		//log.Println("Sending email")
 		err = sendEmail(smtp.SendMail, *smtpConfig, time.Now(), errors)
 	}
 
