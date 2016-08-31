@@ -19,9 +19,15 @@ func TestVerifyFreeSpace(t *testing.T) {
 
 	errors = verifyFreeSpace(string(output), 40)
 	assert.Equal(1, len(errors), "Should be one mount with more than 40% usage")
+	assert.Equal("Disk usage verification error", errors[0].title)
+	assert.Equal("Disk usage of / at 42 percent\n", errors[0].message)
 
 	errors = verifyFreeSpace(string(output), 10)
-	assert.Equal(2, len(errors), "Should be two mounts with more than 40% usage")
+	assert.Equal(2, len(errors), "Should be two mounts with more than 10% usage")
+	assert.Equal("Disk usage verification error", errors[0].title)
+	assert.Equal("Disk usage of / at 42 percent\n", errors[0].message)
+	assert.Equal("Disk usage verification error", errors[1].title)
+	assert.Equal("Disk usage of /boot at 15 percent\n", errors[1].message)
 }
 
 func TestVerifyLoadAvg(t *testing.T) {

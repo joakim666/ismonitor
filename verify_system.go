@@ -21,7 +21,9 @@ func verifyFreeSpace(output string, diskUsagePercentWarning int) []verificationE
 				errors = append(errors, e)
 			} else {
 				if percentValue >= diskUsagePercentWarning {
-					e := verificationError{title: "Disk usage verification error", message: fmt.Sprintf("Disk usage at %d percent\n", percentValue)}
+					e := verificationError{
+						title: "Disk usage verification error",
+						message: fmt.Sprintf("Disk usage of %s at %d percent\n", columns[2], percentValue)}
 					errors = append(errors, e)
 				}
 			}
