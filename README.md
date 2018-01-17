@@ -28,7 +28,7 @@ appeared at least 3 times.
 
 ## Build instructions
 
-<code>$ docker run --rm -v "$PWD":/usr/src/ismonitor -w /usr/src/ismonitor golang:1.6 go build -v</code>
+<code>$ docker run --rm -v "$PWD":/go/src/ismonitor -w /go/src/ismonitor golang:1.6 bash -c 'go get && go build -v'</code>
 
 
 ## Running
